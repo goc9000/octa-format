@@ -9,3 +9,5 @@ It also aims to be open, portable, tolerant of incomplete data, extensible, whil
 binary content, compression, deduplication and arbitrary annotations.
 
 Details can be found in the `Octa Format` document.
+
+License: MIT
