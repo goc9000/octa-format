@@ -127,3 +127,167 @@ alternative to compare features with.
 [^co2]: Some filesystems support locking, but many do not. When locking is supported, it tends to be rather simple (e.g.
         only files, not whole directory trees), which requires extra programming effort when more complicated
         transactions are needed (e.g. we could use a global lock file etc)
+
+
+Conceptual Overview
+-------------------
+
+The content in an OCTA archive can be seen as fitting in one of three functional layers:
+
+1. **The base layer**: The core data we are interested in: sessions, HTTP requests, responses
+2. **The annotations layer**: Tags, comments, analyses attached to base layer objects.
+3. **The compression/deduplication layer**: Extra data (hashes etc) that enables the compression and deduplication
+   functionality.
+
+The latter two layers are entirely optional. A crawler need not add annotations, nor even support their handling in
+general. Similarly, a simple crawler does not need to bother with deduplication or compression - another program can
+process and deduplicate the archive later (or on the fly).
+
+### The base layer
+
+Data in the base layer is structured according to this hierarchy:
+
+    Archive
+      Sessions
+        Tabs
+          Requests
+            Request data
+            Response data
+
+- The **archive** is a singleton entity representing the entire archive database. It contains any number of crawling
+  sessions.
+- A **session** object represents an entire crawling session, during which a site was accessed and navigated through. A
+  session usually has a start and end date, and features only one site (other than the dependencies it pulls), though
+  this is not enforced by the format.
+- A **tab** object roughly corresponds to a tab open in a browser, wherein various URLs and pages may be opened during
+  a crawling session (in Chrome parlance they are called "pages", but this is an ambiguous term). In a simple crawling
+  session, most of the action will happen in a single tab, but in a more complex scenario, the page may open extra tabs
+  for e.g. downloads, `target="_blank"` links etc.
+
+  If crawling is done through a simple script instead of an instrumented browser, there will be no tabs as such in
+  reality, but a "fake" tab object must still be created, as per the hierarchy.
+
+  Tabs are also used to represent hidden service pages such as for extensions, etc., though generally, a crawler will
+  not bother with capturing data from these.
+
+- A **request** object represents an HTTP request over its lifetime, together with the response received, if any.
+
+  Data stored about the request includes:
+
+  - The tab from which it originated
+  - The date/time when it was sent
+  - A sequence number (indicating this is the Xth request issued)
+  - The HTTP method (`GET`, `POST` etc)
+  - The URL
+  - The request headers
+  - Any POST data that was sent
+
+  Stored response information includes:
+
+  - The request's ultimate fate (completed, failed due to network errors, aborted etc.); some conditions may result in
+    no response being received at all, or just the headers etc.
+  - The response's HTTP code and associated extra text (if a response arrived at all)
+  - The response headers
+  - The response body
+  - If the request failed at the network/browser level, an error code and explanatory text
+  - Timing information for events such as:
+      - When the response started arriving (headers etc)
+      - When the response arrived in full (body included)
+      - When the request was deemed failed / aborted
+
+All objects stored also feature an optional field by which an **external ID** may be set (which differs from the
+internal ID that is only used within the database). The external ID is a string in a vendor-specific format that allows
+one to refer to objects in the archive in a stable way that survives database reorganizations, consolidations, merging
+etc. Objects in two archives that have the same external ID should generally be considered to be the same for the
+purpose of operations such as merging and comparison.
+
+### The annotation layer
+
+All important objects in the archive can have any number of annotations attached. This includes sessions, tabs and
+requests, but also sub-objects such as headers and response bodies.
+
+There are three core kinds of annotations:
+
+- **Tags**: Tags allow objects to be easily grouped and searched according to some property they have in common, which
+  is marked by the tag. For instance, in an archive containing many sessions, all sessions for a specific portal could
+  have a tag like `portalXYZ` attached, and be easily retrieved by a query by that specific tag.
+
+  Any number of tags may be attached to an object.
+
+  Tags are defined as having a user-readable label and a machine-readable identifier. The latter acts as a sort of
+  mandatory external ID. During merging, comparison etc., tags with the same identifier will be considered equivalent
+  even if they have a different label in different archives.
+
+- **Comments**: Comments are text snippets with an author and a date that can form a conversation around an object in
+  the archive (if there are multiple people looking at the archive). In a single-user case, they can be used for storing
+  research notes or TODOs.
+
+- **Custom fields**: These are key-value pairs that can store any content not covered by this standard. The key is a
+  string (usually a fully qualified domain name) that describes the type of the value, and the value is a binary blob
+  whose interpretation is up to any program that can handle the specified type.
+
+  For instance, an automated JavaScript deminifier would attach its analysis to the appropriate response body object
+  with a key like e.g. `org.vendorXYZ.deminifier.deminified_body` and a value consisting of the deminified JavaScript
+  content.
+
+  As a rule, programs that do not handle a custom field type should just leave it as-is. Basic operations on the archive
+  (moving etc.) will also preserve the fields of an object. The standard does not cover more complex situations like
+  whether fields of the same type should be overwritten or merged during a merge, etc. It is best if complex operations
+  on content with custom fields is handled by a program that understands the meaning of all said fields.
+
+All annotations to an object also feature an **annotation date** and a reference to the **actor** that created the
+annotation, the latter being either a person (described by their name) or a program. For instance, a comment could refer
+to a "John Smith" as its author, while a deminified body custom field would be authored by a "XYZ deminifier" as its
+actor.
+
+Actors are defined in a registry contained in the archive. Like tags, actors have both a user-readable label and a
+machine-readable identifier. Between archives, actors with the same identifier are considered to be equivalent.
+
+### The compression/deduplication layer
+
+A key feature of the way compression and deduplication are implemented in the format is that they are **opt-in** on a
+per-object basis. Some objects may be compressed, others not. Some instances of a piece of content may be deduplicated
+while still allowing for duplicates of that content to exist. Simple programs may write content without having to handle
+compression and deduplication at all, whereas aware programs can make use of the format's relevant features so as to
+efficiently do compression and deduplication on-the-fly.
+
+#### Compression
+
+Currently compression is only supported for response bodies and POST data. Each response body can be stored using one of
+these supported compression methods:
+
+- **no compression**: the data is stored as-is, uncompressed
+- **DEFLATE**: the data is compressed as per the standard DEFLATE algorithm introduced by Zip and used in `gzip`, the
+  standard `gzip` HTTP compression method, etc.
+
+Parties capable of compression may still want to leave certain objects uncompressed, particularly incompressible data
+such as JPEGs, where attempting to compress it may actually increase the size.
+
+#### Deduplication
+
+Deduplication is supported for the following types of entities:
+
+- URLs [^url]
+- Response bodies
+- POST data
+- Request HTTP header names
+- Request HTTP header values
+- Response HTTP header names
+- Response HTTP header values
+- HTTP status messages
+- Request failure descriptions
+
+The OCTA format provides support for deduplication in two ways:
+
+- Being a database format, all objects and sub-objects are entries in a table under some given ID. Deduplicating e.g. a
+  response body is a trivial matter of making two requests refer to the same ID in the "response bodies" table.
+- All deduplicable entities are provided with a "hash" field where a hash of the content can be stored by an aware
+  program. Before trying to add a piece of content, another aware program can check whether there is already some
+  content with a matching hash, and use the ID of the existing content instead.
+
+The benefits of deduplication can be massive. In one experiment, a rudimentary filesystem-based archive counting several
+tens of gigabytes was reduced to a single SQLite database file less than 200MB in size (and with far superior querying
+facilities to boot).
+
+[^url]: Not only are URLs frequently repeated, but modern sites also feature data URLs that can be very large.
+        Deduplicating these is a must.
