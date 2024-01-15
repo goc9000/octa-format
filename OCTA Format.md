@@ -300,7 +300,7 @@ OCTA is a *database format* as opposed to a *file format*, and thus describes th
 the binary structure of a file. That said, this standard does specify a "canonical", "default" database implementation
 that allows one to store an OCTA archive as a single file.
 
-#### Canonical File-Based Implementation
+### Canonical File-Based Implementation
 
 In the canonical implementation, an OCTA archive can be stored as a SQLite database file (version 3 minimum), with any
 of these extensions:
@@ -325,7 +325,7 @@ And at least the following two entries:
 
 The other tables in the database are described by the OCTA database format proper in the sections below.
 
-#### Other Implementations
+### Other Implementations
 
 Other methods of implementing the archive format in a database include:
 
@@ -334,7 +334,7 @@ Other methods of implementing the archive format in a database include:
 - Embedding the archive in an existing database. It is acceptable and recommended to alter the table names (e.g. by
   adding a prefix like `octa_` or `archive_` etc.) so that they are grouped together when inspecting the database.
 
-#### Versioning
+### Versioning
 
 Versioning is particularly important when OCTA archives are shared in SQLite form, as this is when it is most likely
 that a program designed for a particular version will encounter an archive built using an earlier version of the format.
