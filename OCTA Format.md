@@ -291,3 +291,67 @@ facilities to boot).
 
 [^url]: Not only are URLs frequently repeated, but modern sites also feature data URLs that can be very large.
         Deduplicating these is a must.
+
+
+Low-Level Format
+----------------
+
+OCTA is a *database format* as opposed to a *file format*, and thus describes the structure of a database as opposed to
+the binary structure of a file. That said, this standard does specify a "canonical", "default" database implementation
+that allows one to store an OCTA archive as a single file.
+
+#### Canonical File-Based Implementation
+
+In the canonical implementation, an OCTA archive can be stored as a SQLite database file (version 3 minimum), with any
+of these extensions:
+
+- `.db`, `.sqlite`, `.db3` (the typical SQLite database extensions)
+- `.octa`
+- `.octa.db` etc.
+
+Additionally, the database must contain a table named `meta` with the following columns:
+
+| Name  | Type | Nullable | Other properties |
+|:------|:-----|:--------:|:-----------------|
+| key   | TEXT |   No     | PRIMARY KEY      |
+| value | TEXT |   Yes    |                  |
+
+And at least the following two entries:
+
+| `key`   | Contents of `value`                           |
+|:--------|:----------------------------------------------|
+| type    | The exact string `org.atmfjstc.octa_format`   |
+| version | The version of the format used (e.g. `0.1.0`) |
+
+The other tables in the database are described by the OCTA database format proper in the sections below.
+
+#### Other Implementations
+
+Other methods of implementing the archive format in a database include:
+
+- Storing the archive as a dedicated database on a SQL server like MySQL, PostgreSQL, Microsoft SQL Server etc. The
+  format makes use only of basic SQL features that are common to all these dialects.
+- Embedding the archive in an existing database. It is acceptable and recommended to alter the table names (e.g. by
+  adding a prefix like `octa_` or `archive_` etc.) so that they are grouped together when inspecting the database.
+
+#### Versioning
+
+Versioning is particularly important when OCTA archives are shared in SQLite form, as this is when it is most likely
+that a program designed for a particular version will encounter an archive built using an earlier version of the format.
+
+The versioning scheme observed is: *major* `.` *minor* `.` *patch* , where:
+
+- *major* is advanced when the format undergoes breaking changes or is otherwise fundamentally rewritten. There is no
+  expectation of backward compatibility between major versions.
+
+  As an exception, advancing from major version 0 to 1 does entail backward compatibility - it only signifies
+  progressing past the alpha / rapid development stage.
+
+- *minor* is advanced when significant, but non-breaking changes are made. A program should be able to handle an OCTA
+  archive of an earlier *minor* version as long as the *major* version is still the same.
+
+- *patch* is advanced when the designed functionality remains the same but a bug or oversight has been fixed
+
+Note that earlier versions may be missing columns or tables vs later versions. A program should be aware of this when
+assembling its SQL queries, as most SQL implementations cannot automatically "fill in defaults" when it comes to whole
+tables or column definitions.
