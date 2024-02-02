@@ -195,11 +195,17 @@ Data in the base layer is structured according to this hierarchy:
       - When the response arrived in full (body included)
       - When the request was deemed failed / aborted
 
-All objects stored also feature an optional field by which an **external ID** may be set (which differs from the
-internal ID that is only used within the database). The external ID is a string in a vendor-specific format that allows
-one to refer to objects in the archive in a stable way that survives database reorganizations, consolidations, merging
-etc. Objects in two archives that have the same external ID should generally be considered to be the same for the
-purpose of operations such as merging and comparison.
+#### External IDs
+
+All the major objects in the database (sessions, tabs, requests etc) feature an optional field by which an
+**external ID** may be set, which differs from the internal ID that is only used within the database. The external ID is
+a string in a vendor-specific format that allows one to refer to objects in the archive in a stable way that survives
+database reorganizations, consolidations, merging etc. Objects in two archives that have the same external ID should
+generally be considered to be the same for the purpose of operations such as merging and comparison.
+
+Note that external IDs are only unique within the scope of the immediate parent. Thus, session IDs are unique per
+archive, but e.g. tab IDs are only unique within a session. The same tab ID can be reused for tabs appearing in
+different sessions.
 
 ### The annotation layer
 
