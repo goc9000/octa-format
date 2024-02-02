@@ -361,3 +361,200 @@ The versioning scheme observed is: *major* `.` *minor* `.` *patch* , where:
 Note that earlier versions may be missing columns or tables vs later versions. A program should be aware of this when
 assembling its SQL queries, as most SQL implementations cannot automatically "fill in defaults" when it comes to whole
 tables or column definitions.
+
+
+Database Format
+---------------
+
+We arrive finally at the database format proper.
+
+### Column Types
+
+Despite most SQL dialects offering similar *functionality* regarding data types, the exact *syntax* for specifying those
+data types still differs by quite a lot between dialects. This is particularly relevant for SQLite, which has a much
+looser typing system, where complex types such as sets, dates etc. all resolve to either integer, float, string or
+blob (as seen [here](https://www.sqlite.org/datatype3.html)). As OCTA is intended to work with many SQL dialects, we
+cannot specify columns using a "standard" syntax as we do for tables etc. - because there isn't any -, instead we need
+to cover the exact syntax for SQLite, MySQL and other major dialects. Since OCTA only makes use of a handful of distinct
+types, we will cover them all there, together with all their translations to major dialects, and specify them only as
+"abstract" data types in the sections to follow.
+
+| "Abstract" type | SQLite  | MySQL        | PostgreSQL | MS SQL Server           | Notes                                           |
+|:----------------|:--------|:-------------|:-----------|:------------------------|:------------------------------------------------|
+| serial          | INTEGER | INT(10)      | integer    | INT                     | Int used as surrogate ID for tables             |
+| integer         | INTEGER | INT(10)      | integer    | INT                     | General-purpose integer (HTTP codes etc)        |
+| boolean         | INTEGER | TINYINT(1)   | boolean    | BIT                     | "True or false" value                           |
+| timestamp       | TEXT    | DATETIME(3)  | timestamp  | DATETIME2               | UTC timestamp with millisecond precision [^utc] |
+| string(N)       | TEXT    | VARCHAR(N)   | varchar(N) | NVARCHAR(N)             | Text of limited length (usually < 1000)         |
+| text            | TEXT    | LONGTEXT     | text       | NTEXT or NVARCHAR(MAX)  | Text data of any length [^utf][^len]            |
+| bytes(N)        | BLOB    | VARBINARY(N) | bytea      | VARBINARY(N)            | Binary data of limited length                   |
+| blob            | BLOB    | LONGBLOB     | bytea      | IMAGE or VARBINARY(MAX) | Binary data of any length                       |
+
+
+[^utc]: All timestamps stored in an OCTA database should be assumed to be referenced to UTC (if the dialect does not
+        provide a way of specifying this explicitly)
+[^utf]: Unless otherwise noted, all text data should be assumed to be UTF-8 encoded (or any other Unicode variant
+        available for the dialect).
+[^len]: In practice, nearly all SQL engines have a limit of 1 or 2 GB for binary or text values, and thus an OCTA
+        database cannot store e.g. response bodies that are larger than that after compression. While the format could
+        be adjusted to account for this possibility, this is not a priority as downloading such huge files during
+        crawling is not a typical or recommended scenario.
+
+### Tables for the Base Layer
+
+#### Table: `sessions`
+
+##### Columns
+
+| Name        | Type        | Nullable | Other Properties                  |
+|:------------|:------------|:--------:|:----------------------------------|
+| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT [^ain] |
+| external_id | string(200) |   Yes    |                                   |
+| start_time  | timestamp   |   Yes    |                                   |
+| end_time    | timestamp   |   Yes    |                                   |
+
+##### Indexes
+
+| Column(s)   | Other Properties | Notes                                                                    |
+|:------------|:-----------------|:-------------------------------------------------------------------------|
+| external_id | UNIQUE           | Mandate external ID uniqueness and allow finding sessions by external ID |
+| start_time  |                  | For efficiently sorting sessions by date                                 |
+
+
+[^ain]: Some SQL dialects have a different way of defining an auto-incrementing surrogate ID column. For PostgreSQL, for
+        instance, its native `serial` datatype should be used instead.
+
+#### Table: `tabs`
+
+##### Columns
+
+| Name        | Type        | Nullable | Foreign Key To | Other Properties           |
+|:------------|:------------|:--------:|:---------------|:---------------------------|
+| id          | serial      |   No     |                | PRIMARY KEY, AUTOINCREMENT |
+| session_id  | serial      |   No     | sessions.id    |                            |
+| external_id | string(200) |   Yes    |                |                            |
+| type        | string(24)  |   Yes    |                |                            |
+| time_open   | timestamp   |   Yes    |                |                            |
+| time_closed | timestamp   |   Yes    |                |                            |
+| parent_id   | serial      |   Yes    | tabs.id        |                            |
+
+Note: unless otherwise specified, all foreign key references should be defined with `ON DELETE CASCADE` and
+`ON UPDATE CASCADE`.
+
+Column notes:
+
+- The `type` column allows distinguishing between "real" tabs and background pages and the like. The following values
+  are defined:
+
+  | Value           | Meaning                             |
+  |:----------------|:------------------------------------|
+  | page            | Real, visible tab                   |
+  | background_page | Background page for extensions etc. |
+  | service_worker  | Self-explanatory                    |
+  | shared_worker   | Self-explanatory                    |
+
+  Other browser-specific types may also occur in practice (the OCTA format does not mandate that this enumeration is
+  closed).
+
+  The value can also be `NULL` if unknown or unimportant. By default, one should assume that a tab is "real" unless
+  otherwise specified.
+
+- The `parent_id` identifies the tab that opened this one, if known. Note that a value of `NULL` does not imply that the
+  tab was not opened by another, as some crawlers cannot or will not record this information.
+
+##### Indexes
+
+| Column(s)               | Other properties | Notes                                                                            |
+|:------------------------|:-----------------|:---------------------------------------------------------------------------------|
+| session_id, external_id | UNIQUE           | Mandate external ID uniqueness per session and allow finding tabs by external ID |
+
+#### Table: `requests`
+
+##### Columns
+
+| Name                  | Type        | Nullable | Foreign Key To   | Other properties           |
+|:----------------------|:------------|:--------:|:-----------------|:---------------------------|
+| id                    | serial      |   No     |                  | PRIMARY KEY, AUTOINCREMENT |
+| tab_id                | serial      |   No     | tabs.id          |                            |
+| external_id           | string(200) |   Yes    |                  |                            |
+| sequence_no           | integer     |   Yes    |                  |                            |
+| method                | string(24)  |   Yes    |                  |                            |
+| url_id                | serial      |   Yes    | urls.id          |                            |
+| post_data_id          | serial      |   Yes    | bodies.id        |                            |
+| time_started          | timestamp   |   Yes    |                  |                            |
+| is_navigation         | boolean     |   Yes    |                  |                            |
+| fetch_type            | string(64)  |   Yes    |                  |                            |
+| response_arrived      | boolean     |   Yes    |                  |                            |
+| time_response_arrived | timestamp   |   Yes    |                  |                            |
+| http_code             | integer     |   Yes    |                  |                            |
+| status_text_id        | serial      |   Yes    | status_texts.id  |                            |
+| body_id               | serial      |   Yes    | bodies.id        |                            |
+| is_failed             | boolean     |   Yes    |                  |                            |
+| failure_text_id       | serial      |   Yes    | failure_texts.id |                            |
+| is_complete           | boolean     |   Yes    |                  |                            |
+| time_finished         | timestamp   |   Yes    |                  |                            |
+
+Column notes:
+
+- `method`: This contains the HTTP method (e.g. `GET`, `POST` etc.), normally in uppercase, but OCTA does not mandate
+  this. Unusual/custom HTTP methods can also be specified.
+- `is_navigation`: True if this is a navigation request, i.e. one that is expected to cause a new document to be loaded
+  in the tab. By contrast, requests for stylesheets, scripts, AJAX etc. are non-navigation requests and should have
+  `false` for this field. `NULL` should be used if the nature of the request is unknown/unspecified.
+- `fetch_type`: Further indication as to the destination/meaning of this request, as per the constants defined in Chrome
+  [here](https://chromedevtools.github.io/devtools-protocol/tot/Network/#type-ResourceType):
+
+  | Value              |
+  |:-------------------|
+  | document           |
+  | stylesheet         |
+  | image              |
+  | media              |
+  | font               |
+  | script             |
+  | texttrack          |
+  | xhr                |
+  | fetch              |
+  | prefetch           |
+  | eventsource        |
+  | websocket          |
+  | manifest           |
+  | signedexchange     |
+  | ping               |
+  | cspviolationreport |
+  | preflight          |
+  | other              |
+
+  Other values can also be stored.
+
+- `response_arrived`: True if any part of the response (even headers) ever arrived. Similary, `time_response_arrived`
+  marks the time when the response started arriving (headers were received), as opposed to when the response body
+  was completely received (which may well never occur)
+- `status_text_id`: A reference to a deduplicated table of status texts (the optional text that may follow the HTTP
+  status code; sometimes this contains extra info on why e.g. a resource could not be accessed). Empty statuses should
+  never be stored, rather `NULL` should be used instead.
+- `is_failed`: True if the request failed due to a network error or was aborted. This usually means that there will be
+  no response as such at all (unless it was aborted while the response body was still being received). The request will
+  **not** be considered failed in this sense if an error-indicating HTTP code (400, 500 etc) was received.
+- `failure_text_id`: A short text (usually just an error code string) providing extra information on why a request
+  failed. This allows distinguishing between aborted requests and those that encountered e.g. network errors.
+- `is_complete`: True if the request is complete due to either succeeding (i.e. the response body being fully received)
+  or failing due to network errors or being aborted. A false value should be used as an indication that the crawler
+  process stopped recording before the fate of this request could be ascertained.
+- `time_finished`: The time when the request completed (either by receiving the entire response body, or failing).
+
+Note that it is acceptable to have a request object with no URL or method defined, even though no real-life request can
+exist without these. This is to allow crawlers to "preallocate" a request object and its ID as soon as a request is
+detected, allowing them to fill in the rest of the details later (if e.g. doing URL deduplication, this might take some
+time). A display/processing program should skip processing such "empty" requests if it encounters them.
+
+##### Indexes
+
+| Column(s)               | Other properties | Notes                                                                            |
+|:------------------------|:-----------------|:---------------------------------------------------------------------------------|
+| tab_id, external_id     | UNIQUE           | Mandate external ID uniqueness per tab and allow finding requests by external ID |
+| tab_id, sequence_no     |                  | Efficiently sort requests through time (within a tab)                            |
+| tab_id, time_started    |                  | Efficiently sort requests through time (within a tab)                            |
+
+Note: more indexes are likely to be added here in future versions of the format, as more efficiency requirements are
+revealed in practice.
