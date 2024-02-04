@@ -11,6 +11,24 @@ OCTA (Online Crawling Trace Archive) is a database format for storing the comple
 sessions.
 
 
+Table of Contents
+-----------------
+
+- [Summary](#summary)
+- [Design Goals](#design-goals)
+- [Comparison to Alternatives](#comparison-to-alternatives)
+- [Conceptual Overview](#conceptual-overview)
+  * [The base layer](#the-base-layer)
+  * [The annotation layer](#the-annotation-layer)
+  * [The compression/deduplication layer](#the-compressiondeduplication-layer)
+- [Low-Level Format](#low-level-format)
+  * [Canonical File-Based Implementation](#canonical-file-based-implementation)
+  * [Other Implementations](#other-implementations)
+  * [Versioning](#versioning)
+- [Database Format](#database-format)
+  * [Column Types](#column-types)
+  * [Tables for the Base Layer](#tables-for-the-base-layer)
+
 
 Design Goals
 ------------
