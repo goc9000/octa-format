@@ -403,8 +403,8 @@ types, we will cover them all there, together with all their translations to maj
 | integer         | INTEGER | INT(10)      | integer    | INT                     | General-purpose integer (HTTP codes etc)        |
 | boolean         | INTEGER | TINYINT(1)   | boolean    | BIT                     | "True or false" value                           |
 | timestamp       | TEXT    | DATETIME(3)  | timestamp  | DATETIME2               | UTC timestamp with millisecond precision [^utc] |
-| string(N)       | TEXT    | VARCHAR(N)   | varchar(N) | NVARCHAR(N)             | Text of limited length (usually < 1000)         |
-| text            | TEXT    | LONGTEXT     | text       | NTEXT or NVARCHAR(MAX)  | Text data of any length [^utf][^len]            |
+| string(N)       | TEXT    | VARCHAR(N)   | varchar(N) | NVARCHAR(N)             | Text of limited length (usually < 1000) [^utf]  |
+| text            | TEXT    | LONGTEXT     | text       | NTEXT or NVARCHAR(MAX)  | Text data of any length [^len]                  |
 | bytes(N)        | BLOB    | VARBINARY(N) | bytea      | VARBINARY(N)            | Binary data of limited length                   |
 | blob            | BLOB    | LONGBLOB     | bytea      | IMAGE or VARBINARY(MAX) | Binary data of any length                       |
 
