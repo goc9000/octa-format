@@ -335,7 +335,7 @@ of these extensions:
 
 Additionally, the database must contain a table named `meta` with the following columns:
 
-| Name  | Type | Nullable | Other properties |
+| Name  | Type | Nullable | Other Properties |
 |:------|:-----|:--------:|:-----------------|
 | key   | TEXT |   No     | PRIMARY KEY      |
 | value | TEXT |   Yes    |                  |
@@ -482,7 +482,7 @@ Column notes:
 
 ##### Indexes
 
-| Column(s)               | Other properties | Notes                                                                            |
+| Column(s)               | Other Properties | Notes                                                                            |
 |:------------------------|:-----------------|:---------------------------------------------------------------------------------|
 | session_id, external_id | UNIQUE           | Mandate external ID uniqueness per session and allow finding tabs by external ID |
 
@@ -490,7 +490,7 @@ Column notes:
 
 ##### Columns
 
-| Name                  | Type        | Nullable | Foreign Key To   | Other properties           |
+| Name                  | Type        | Nullable | Foreign Key To   | Other Properties           |
 |:----------------------|:------------|:--------:|:-----------------|:---------------------------|
 | id                    | serial      |   No     |                  | PRIMARY KEY, AUTOINCREMENT |
 | tab_id                | serial      |   No     | tabs.id          |                            |
@@ -568,7 +568,7 @@ time). A display/processing program should skip processing such "empty" requests
 
 ##### Indexes
 
-| Column(s)               | Other properties | Notes                                                                            |
+| Column(s)               | Other Properties | Notes                                                                            |
 |:------------------------|:-----------------|:---------------------------------------------------------------------------------|
 | tab_id, external_id     | UNIQUE           | Mandate external ID uniqueness per tab and allow finding requests by external ID |
 | tab_id, sequence_no     |                  | Efficiently sort requests through time (within a tab)                            |
@@ -583,7 +583,7 @@ This table stores the HTTP request headers for each request, as deduplicated key
 
 ##### Columns
 
-| Name            | Type   | Nullable | Foreign Key To           | Other properties           |
+| Name            | Type   | Nullable | Foreign Key To           | Other Properties           |
 |:----------------|:-------|:--------:|:-------------------------|:---------------------------|
 | id              | serial |   No     |                          | PRIMARY KEY, AUTOINCREMENT |
 | request_id      | serial |   No     | requests.id              |                            |
@@ -598,7 +598,7 @@ added for the header, with a value featuring a comma-separated list as per the H
 
 ##### Indexes
 
-| Column(s)                        | Other properties | Notes                                                                   |
+| Column(s)                        | Other Properties | Notes                                                                   |
 |:---------------------------------|:-----------------|:------------------------------------------------------------------------|
 | request_id                       |                  | Find the headers of a particular request                                |
 | header_name_id, header_value_id  |                  | Efficiently find all headers of a given type or a given key-value combo |
@@ -618,7 +618,7 @@ data is small enough to allow for direct indexing.
 
 ##### Indexes
 
-| Column(s) | Other properties | Notes                         |
+| Column(s) | Other Properties | Notes                         |
 |:----------|:-----------------|:------------------------------|
 | name      |                  | Index header names by content |
 
@@ -642,7 +642,7 @@ non-indexed scan, but this is not recommended.
 
 ##### Indexes
 
-| Column(s)   | Other properties | Notes                             |
+| Column(s)   | Other Properties | Notes                             |
 |:------------|:-----------------|:----------------------------------|
 | hash_sha256 |                  | Index header values by value hash |
 
@@ -652,7 +652,7 @@ This table works just like `request_headers`, but stores the headers for the HTT
 
 ##### Columns
 
-| Name            | Type   | Nullable | Foreign Key To            | Other properties           |
+| Name            | Type   | Nullable | Foreign Key To            | Other Properties           |
 |:----------------|:-------|:--------:|:--------------------------|:---------------------------|
 | id              | serial |   No     |                           | PRIMARY KEY, AUTOINCREMENT |
 | request_id      | serial |   No     | requests.id               |                            |
@@ -661,7 +661,7 @@ This table works just like `request_headers`, but stores the headers for the HTT
 
 ##### Indexes
 
-| Column(s)                        | Other properties | Notes                                                                   |
+| Column(s)                        | Other Properties | Notes                                                                   |
 |:---------------------------------|:-----------------|:------------------------------------------------------------------------|
 | request_id                       |                  | Find the response headers for a particular request                      |
 | header_name_id, header_value_id  |                  | Efficiently find all headers of a given type or a given key-value combo |
@@ -681,7 +681,7 @@ response headers.
 
 ##### Indexes
 
-| Column(s) | Other properties | Notes                         |
+| Column(s) | Other Properties | Notes                         |
 |:----------|:-----------------|:------------------------------|
 | name      |                  | Index header names by content |
 
@@ -700,7 +700,7 @@ response headers.
 
 ##### Indexes
 
-| Column(s)   | Other properties | Notes                             |
+| Column(s)   | Other Properties | Notes                             |
 |:------------|:-----------------|:----------------------------------|
 | hash_sha256 |                  | Index header values by value hash |
 
@@ -746,7 +746,7 @@ headers and trailers as per [RFC 1950](https://datatracker.ietf.org/doc/html/rfc
 
 ##### Indexes
 
-| Column(s)   | Other properties | Notes                           |
+| Column(s)   | Other Properties | Notes                           |
 |:------------|:-----------------|:--------------------------------|
 | hash_sha256 |                  | Index responses by content hash |
 
@@ -764,7 +764,7 @@ As usual, `hash_sha256` is the hash of the URL value, after UTF-8 encoding.
 
 ##### Indexes
 
-| Column(s)   | Other properties | Notes                      |
+| Column(s)   | Other Properties | Notes                      |
 |:------------|:-----------------|:---------------------------|
 | hash_sha256 |                  | Index URLs by content hash |
 
@@ -781,7 +781,7 @@ As for header names, duplicates can be checked for using the value field directl
 
 ##### Indexes
 
-| Column(s) | Other properties | Notes                         |
+| Column(s) | Other Properties | Notes                         |
 |:----------|:-----------------|:------------------------------|
 | value     |                  | Index status texts by content |
 
@@ -798,6 +798,6 @@ Functions similarly to `status_texts`.
 
 ##### Indexes
 
-| Column(s) | Other properties | Notes                          |
+| Column(s) | Other Properties | Notes                          |
 |:----------|:-----------------|:-------------------------------|
 | value     |                  | Index failure texts by content |
