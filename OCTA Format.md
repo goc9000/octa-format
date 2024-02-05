@@ -420,6 +420,7 @@ types, we will cover them all there, together with all their translations to maj
 
 ### Tables for the Base Layer
 
+
 #### Table: `sessions`
 
 ##### Columns
@@ -441,6 +442,7 @@ types, we will cover them all there, together with all their translations to maj
 
 [^ain]: Some SQL dialects have a different way of defining an auto-incrementing surrogate ID column. For PostgreSQL, for
         instance, its native `serial` datatype should be used instead.
+
 
 #### Table: `tabs`
 
@@ -485,6 +487,7 @@ Column notes:
 | Column(s)               | Other Properties | Notes                                                                            |
 |:------------------------|:-----------------|:---------------------------------------------------------------------------------|
 | session_id, external_id | UNIQUE           | Mandate external ID uniqueness per session and allow finding tabs by external ID |
+
 
 #### Table: `requests`
 
@@ -577,6 +580,7 @@ time). A display/processing program should skip processing such "empty" requests
 Note: more indexes are likely to be added here in future versions of the format, as more efficiency requirements are
 revealed in practice.
 
+
 #### Table: `request_headers`
 
 This table stores the HTTP request headers for each request, as deduplicated key/value pairs.
@@ -604,6 +608,7 @@ added for the header, with a value featuring a comma-separated list as per the H
 | header_name_id, header_value_id  |                  | Efficiently find all headers of a given type or a given key-value combo |
 | header_value_id                  |                  | Efficiently find all headers featuring a given value                    |
 
+
 #### Table: `request_header_names`
 
 ##### Columns
@@ -621,6 +626,7 @@ data is small enough to allow for direct indexing.
 | Column(s) | Other Properties | Notes                         |
 |:----------|:-----------------|:------------------------------|
 | name      |                  | Index header names by content |
+
 
 #### Table: `request_header_values`
 
@@ -646,6 +652,7 @@ non-indexed scan, but this is not recommended.
 |:------------|:-----------------|:----------------------------------|
 | hash_sha256 |                  | Index header values by value hash |
 
+
 #### Table: `response_headers`
 
 This table works just like `request_headers`, but stores the headers for the HTTP response associated with a request.
@@ -667,6 +674,7 @@ This table works just like `request_headers`, but stores the headers for the HTT
 | header_name_id, header_value_id  |                  | Efficiently find all headers of a given type or a given key-value combo |
 | header_value_id                  |                  | Efficiently find all headers featuring a given value                    |
 
+
 #### Table: `response_header_names`
 
 This table works just like `request_header_names`, but provides a separate deduplication scope for the names of HTTP
@@ -684,6 +692,7 @@ response headers.
 | Column(s) | Other Properties | Notes                         |
 |:----------|:-----------------|:------------------------------|
 | name      |                  | Index header names by content |
+
 
 #### Table: `response_header_values`
 
@@ -703,6 +712,7 @@ response headers.
 | Column(s)   | Other Properties | Notes                             |
 |:------------|:-----------------|:----------------------------------|
 | hash_sha256 |                  | Index header values by value hash |
+
 
 #### Table: `bodies`
 
@@ -750,6 +760,7 @@ headers and trailers as per [RFC 1950](https://datatracker.ietf.org/doc/html/rfc
 |:------------|:-----------------|:--------------------------------|
 | hash_sha256 |                  | Index responses by content hash |
 
+
 #### Table: `urls`
 
 This table stores URLs (which may be quite large, e.g. if they are data URLs).
@@ -768,6 +779,7 @@ As usual, `hash_sha256` is the hash of the URL value, after UTF-8 encoding.
 |:------------|:-----------------|:---------------------------|
 | hash_sha256 |                  | Index URLs by content hash |
 
+
 #### Table: `status_texts`
 
 As for header names, duplicates can be checked for using the value field directly, no need for a hash.
@@ -784,6 +796,7 @@ As for header names, duplicates can be checked for using the value field directl
 | Column(s) | Other Properties | Notes                         |
 |:----------|:-----------------|:------------------------------|
 | value     |                  | Index status texts by content |
+
 
 #### Table: `failure_texts`
 
