@@ -576,3 +576,228 @@ time). A display/processing program should skip processing such "empty" requests
 
 Note: more indexes are likely to be added here in future versions of the format, as more efficiency requirements are
 revealed in practice.
+
+#### Table: `request_headers`
+
+This table stores the HTTP request headers for each request, as deduplicated key/value pairs.
+
+##### Columns
+
+| Name            | Type   | Nullable | Foreign Key To           | Other properties           |
+|:----------------|:-------|:--------:|:-------------------------|:---------------------------|
+| id              | serial |   No     |                          | PRIMARY KEY, AUTOINCREMENT |
+| request_id      | serial |   No     | requests.id              |                            |
+| header_name_id  | serial |   No     | request_header_names.id  |                            |
+| header_value_id | serial |   No     | request_header_values.id |                            |
+
+**Important note** regarding HTTP headers that can take multiple values: it is possible to add multiple entries for a
+request with the same `header_name_id`, thus defining multiple values for a header. However, there is no explicit
+ordering between entries in this table, thus this can only be done for HTTP headers where the ordering is not
+significant between the multiple values (e.g. `Accept:`). If the ordering is significant, only one entry should be
+added for the header, with a value featuring a comma-separated list as per the HTTP spec.
+
+##### Indexes
+
+| Column(s)                        | Other properties | Notes                                                                   |
+|:---------------------------------|:-----------------|:------------------------------------------------------------------------|
+| request_id                       |                  | Find the headers of a particular request                                |
+| header_name_id, header_value_id  |                  | Efficiently find all headers of a given type or a given key-value combo |
+| header_value_id                  |                  | Efficiently find all headers featuring a given value                    |
+
+#### Table: `request_header_names`
+
+##### Columns
+
+| Name        | Type        | Nullable | Other Properties           |
+|:------------|:------------|:--------:|:---------------------------|
+| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| name        | string(200) |   No     |                            |
+
+Note that for the purposes of deduplication, programs can query by `name` directly to check for duplicates, as the field
+data is small enough to allow for direct indexing.
+
+##### Indexes
+
+| Column(s) | Other properties | Notes                         |
+|:----------|:-----------------|:------------------------------|
+| name      |                  | Index header names by content |
+
+#### Table: `request_header_values`
+
+##### Columns
+
+| Name        | Type        | Nullable | Other Properties           |
+|:------------|:------------|:--------:|:---------------------------|
+| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| value       | text        |   No     |                            |
+| hash_sha256 | bytes(32)   |   Yes    |                            |
+
+The `hash_sha256` column is part of the deduplication layer and contains the SHA-256 hash of the header value, after
+encoding as UTF-8. The hash enables deduplication by allowing for programs to look up a value by content, even for very
+large values that do not allow for direct indexing.
+
+The hash is of course optional - unhashed values will simply not participate in the deduplication process, and likely
+duplicates of them will accumulate in the table. A program can of course also look for duplicates using a linear
+non-indexed scan, but this is not recommended.
+
+##### Indexes
+
+| Column(s)   | Other properties | Notes                             |
+|:------------|:-----------------|:----------------------------------|
+| hash_sha256 |                  | Index header values by value hash |
+
+#### Table: `response_headers`
+
+This table works just like `request_headers`, but stores the headers for the HTTP response associated with a request.
+
+##### Columns
+
+| Name            | Type   | Nullable | Foreign Key To            | Other properties           |
+|:----------------|:-------|:--------:|:--------------------------|:---------------------------|
+| id              | serial |   No     |                           | PRIMARY KEY, AUTOINCREMENT |
+| request_id      | serial |   No     | requests.id               |                            |
+| header_name_id  | serial |   No     | response_header_names.id  |                            |
+| header_value_id | serial |   No     | response_header_values.id |                            |
+
+##### Indexes
+
+| Column(s)                        | Other properties | Notes                                                                   |
+|:---------------------------------|:-----------------|:------------------------------------------------------------------------|
+| request_id                       |                  | Find the response headers for a particular request                      |
+| header_name_id, header_value_id  |                  | Efficiently find all headers of a given type or a given key-value combo |
+| header_value_id                  |                  | Efficiently find all headers featuring a given value                    |
+
+#### Table: `response_header_names`
+
+This table works just like `request_header_names`, but provides a separate deduplication scope for the names of HTTP
+response headers.
+
+##### Columns
+
+| Name        | Type        | Nullable | Other Properties           |
+|:------------|:------------|:--------:|:---------------------------|
+| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| name        | string(200) |   No     |                            |
+
+##### Indexes
+
+| Column(s) | Other properties | Notes                         |
+|:----------|:-----------------|:------------------------------|
+| name      |                  | Index header names by content |
+
+#### Table: `response_header_values`
+
+This table works just like `request_header_values`, but provides a separate deduplication scope for the values of HTTP
+response headers.
+
+##### Columns
+
+| Name        | Type        | Nullable | Other Properties           |
+|:------------|:------------|:--------:|:---------------------------|
+| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| value       | text        |   No     |                            |
+| hash_sha256 | bytes(32)   |   Yes    |                            |
+
+##### Indexes
+
+| Column(s)   | Other properties | Notes                             |
+|:------------|:-----------------|:----------------------------------|
+| hash_sha256 |                  | Index header values by value hash |
+
+#### Table: `bodies`
+
+This table stores the content for both HTTP response bodies and request POST data alike.
+
+| Name        | Type        | Nullable | Other Properties           |
+|:------------|:------------|:--------:|:---------------------------|
+| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| content     | bytes       |   Yes    |                            |
+| size        | integer     |   Yes    |                            |
+| compression | string(16)  |   Yes    |                            |
+| hash_sha256 | bytes(32)   |   Yes    |                            |
+
+Column notes:
+
+- `content`: The content of the response/POST data is stored here, either compressed or uncompressed. Note that even
+  uncompressed, text-based responses are still stored as bytes. The text encoding should be retrieved from the
+  `Content-Type` HTTP header, or assumed to be UTF-8 otherwise.
+
+  Note that the `content` can be NULL if the crawler does not need or want to store the response data (for reasons of
+  space, privacy etc). In this case, the `size` and/or `hash_sha256` fields can still be filled in so as to provide at
+  least some essential information regarding the response.
+
+- `size`: The size of the response, in bytes. This always refers to the *uncompressed* size. The field can be NULL in
+  which case the size can be computed from the `content` if available.
+
+- `hash_sha256`: Similarly to `size`, the hash is always computed on the *uncompressed* content.
+
+- `compression`: The following values are supported:
+
+  | Value        | Meaning                                                                    |
+  |:-------------|----------------------------------------------------------------------------|
+  | uncompressed | `content` contains the uncompressed response as-is                         |
+  | (NULL)       | Same as `uncompressed`                                                     |
+  | deflate      | `content` contains the response compressed using DEFLATE (see notes below) |
+
+**Note** regarding DEFLATE compression: the DEFLATE algorithm is well-known and beyond the scope of this document, being
+instead described in e.g. [RFC 1951](https://datatracker.ietf.org/doc/html/rfc1951). For easier compatibility with other
+libraries and languages, the `content` field does *not* store a raw DEFLATE stream, but rather adds zlib-specific
+headers and trailers as per [RFC 1950](https://datatracker.ietf.org/doc/html/rfc1950).
+
+##### Indexes
+
+| Column(s)   | Other properties | Notes                           |
+|:------------|:-----------------|:--------------------------------|
+| hash_sha256 |                  | Index responses by content hash |
+
+#### Table: `urls`
+
+This table stores URLs (which may be quite large, e.g. if they are data URLs).
+
+| Name        | Type        | Nullable | Other Properties           |
+|:------------|:------------|:--------:|:---------------------------|
+| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| url         | text        |   No     |                            |
+| hash_sha256 | bytes(32)   |   Yes    |                            |
+
+As usual, `hash_sha256` is the hash of the URL value, after UTF-8 encoding.
+
+##### Indexes
+
+| Column(s)   | Other properties | Notes                      |
+|:------------|:-----------------|:---------------------------|
+| hash_sha256 |                  | Index URLs by content hash |
+
+#### Table: `status_texts`
+
+As for header names, duplicates can be checked for using the value field directly, no need for a hash.
+
+##### Columns
+
+| Name        | Type        | Nullable | Other Properties           |
+|:------------|:------------|:--------:|:---------------------------|
+| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| value       | string(250) |   No     |                            |
+
+##### Indexes
+
+| Column(s) | Other properties | Notes                         |
+|:----------|:-----------------|:------------------------------|
+| value     |                  | Index status texts by content |
+
+#### Table: `failure_texts`
+
+Functions similarly to `status_texts`.
+
+##### Columns
+
+| Name        | Type        | Nullable | Other Properties           |
+|:------------|:------------|:--------:|:---------------------------|
+| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| value       | string(250) |   No     |                            |
+
+##### Indexes
+
+| Column(s) | Other properties | Notes                          |
+|:----------|:-----------------|:-------------------------------|
+| value     |                  | Index failure texts by content |
