@@ -28,7 +28,8 @@ Table of Contents
 - [Database Format](#database-format)
   * [Column Types](#column-types)
   * [Tables for the Base Layer](#tables-for-the-base-layer)
-
+  * [Tables for the Compression/Deduplication Layer](#tables-for-the-compressiondeduplication-layer)
+  * [Tables for the Annotation Layer](#tables-for-the-annotation-layer)
 
 Design Goals
 ------------
@@ -814,3 +815,177 @@ Functions similarly to `status_texts`.
 | Column(s) | Other Properties | Notes                          |
 |:----------|:-----------------|:-------------------------------|
 | value     |                  | Index failure texts by content |
+
+
+### Tables for the Compression/Deduplication Layer
+
+There are currently no tables specifically dedicated to the compression/deduplication functionality. All such functions
+are achieved through the `hash_sha256` and `compression` columns described previously.
+
+
+### Tables for the Annotation Layer
+
+
+#### Table: `referenced_objects`
+
+This table provides a layer of indirection that is necessary to handle some of the complications resulting from there
+being many different types of objects that can be annotated: sessions, tabs, requests, bodies etc.
+
+In this table, and only in this table, there is a foreign key for each of the object types that allow annotations. The
+type-specific surrogate IDs are all associated with another unique "type-agnostic" annotatable object ID, and it is the
+latter that the tags, comments etc. are attached to. Thus we avoid having to repeat the foreign key set for each type
+of annotation (as well as the merging etc. complications that result).
+
+Notes:
+
+- Not all objects in the database need to have an entry here, only those for which an annotation exists
+- The table is subject to an invariant (not enforced at the SQL level): for each row, exactly one of the foreign keys
+  must be non-NULL.
+- Other solutions could have been chosen, e.g. an inheritance pattern whereby the sessions, tabs etc. tables are
+  considered subtypes of an "annotatable object" superclass and the tables are structured accordingly. However the
+  chosen solution has the advantage that the annotation layer tables etc. can be completely omitted without any change
+  being necessary to the main layer definitions.
+
+##### Columns
+
+| Name                   | Type   | Nullable | Foreign Key To            | Other Properties           |
+|:-----------------------|:-------|:--------:|:--------------------------|:---------------------------|
+| id                     | serial |   No     |                           | PRIMARY KEY, AUTOINCREMENT |
+| session_id             | serial |   Yes    | sessions.id               |                            |
+| tab_id                 | serial |   Yes    | tabs.id                   |                            |
+| request_id             | serial |   Yes    | requests.id               |                            |
+| url_id                 | serial |   Yes    | url.id                    |                            |
+| body_id                | serial |   Yes    | bodies.id                 |                            |
+| request_header_val_id  | serial |   Yes    | request_header_values.id  |                            |
+| response_header_val_id | serial |   Yes    | response_header_values.id |                            |
+
+##### Indexes
+
+| Column(s)               | Other Properties | Notes                          |
+|:------------------------|:-----------------|:-------------------------------|
+| session_id              | UNIQUE           | Enforce uniqueness             |
+| tab_id                  | UNIQUE           | Enforce uniqueness             |
+| request_id              | UNIQUE           | Enforce uniqueness             |
+| url_id                  | UNIQUE           | Enforce uniqueness             |
+| body_id                 | UNIQUE           | Enforce uniqueness             |
+| request_header_val_id   | UNIQUE           | Enforce uniqueness             |
+| response_header_val_id  | UNIQUE           | Enforce uniqueness             |
+
+
+#### Table: `actors`
+
+This table is an index of all the parties that authored annotations in the archive. The column `label` contains a
+human-readable name or description, whereas `identifier` contains the unique, machine-readable ID, usually in FQDN
+format.
+
+Note that due to the unique constraint on the identifier, deduplication for actor objects is mandatory. It is best if a
+program checks and creates its necessary actors ahead of time instead of during each tagging operation.
+
+##### Columns
+
+| Name                   | Type        | Nullable | Other Properties           |
+|:-----------------------|:------------|:--------:|:---------------------------|
+| id                     | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| identifier             | string(200) |   No     |                            |
+| label                  | string(200) |   No     |                            |
+
+##### Indexes
+
+| Column(s)               | Other Properties | Notes                                       |
+|:------------------------|:-----------------|:--------------------------------------------|
+| identifier              | UNIQUE           | Search by identifier and enforce uniqueness |
+
+
+#### Table: `tags`
+
+This table is an index of all the tags that are *defined* in the archive (as opposed to the tag *assignments* which are
+in another table).
+
+The same considerations as for `actors` apply here.
+
+##### Columns
+
+| Name                   | Type        | Nullable | Other Properties           |
+|:-----------------------|:------------|:--------:|:---------------------------|
+| id                     | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| identifier             | string(200) |   No     |                            |
+| label                  | string(200) |   No     |                            |
+
+##### Indexes
+
+| Column(s)               | Other Properties | Notes                                       |
+|:------------------------|:-----------------|:--------------------------------------------|
+| identifier              | UNIQUE           | Search by identifier and enforce uniqueness |
+
+
+#### Table: `object_tags`
+
+This table contains the list of tags attached to annotatable objects.
+
+Note that there is no ordering defined between the tags attached to an object (other than the tagging time).
+
+##### Columns
+
+| Name                   | Type      | Nullable | Foreign Key To            | Other Properties           |
+|:-----------------------|:----------|:--------:|:--------------------------|:---------------------------|
+| id                     | serial    |   No     |                           | PRIMARY KEY, AUTOINCREMENT |
+| tag_id                 | serial    |   No     | tags.id                   |                            |
+| actor_id               | serial    |   No     | actors.id                 |                            |
+| time_tagged            | timestamp |   No     |                           |                            |
+| item_id                | serial    |   No     | referenced_objects.id     |                            |
+
+##### Indexes
+
+| Column(s)               | Other Properties | Notes                                       |
+|:------------------------|:-----------------|:--------------------------------------------|
+| time_tagged             |                  | Search by date                              |
+
+
+#### Table: `comments`
+
+##### Columns
+
+| Name                   | Type      | Nullable | Foreign Key To            | Other Properties           |
+|:-----------------------|:----------|:--------:|:--------------------------|:---------------------------|
+| id                     | serial    |   No     |                           | PRIMARY KEY, AUTOINCREMENT |
+| comment                | text      |   No     |                           |                            |
+| actor_id               | serial    |   No     | actors.id                 |                            |
+| time                   | timestamp |   No     |                           |                            |
+| item_id                | serial    |   No     | referenced_objects.id     |                            |
+
+##### Indexes
+
+| Column(s)               | Other Properties | Notes                                       |
+|:------------------------|:-----------------|:--------------------------------------------|
+| time                    |                  | Search by date                              |
+
+
+#### Table: `custom_annotations`
+
+This table contains the custom annotations (analyses, vendor-specific data etc.) that can be attached to an object.
+Central to each entry are the `type` (a FQDN-like identifier) and the `value` blob whose interpretation, of course,
+depends on the type.
+
+Notes:
+
+- It is possible in principle to attach multiple annotations of the same `type` to a given object (but they will not be
+  ordered, other than by time)
+- Annotations can have the value NULL
+
+##### Columns
+
+| Name                   | Type        | Nullable | Foreign Key To            | Other Properties           |
+|:-----------------------|:------------|:--------:|:--------------------------|:---------------------------|
+| id                     | serial      |   No     |                           | PRIMARY KEY, AUTOINCREMENT |
+| type                   | string(200) |   No     |                           |                            |
+| value                  | bytes       |   Yes    |                           |                            |
+| actor_id               | serial      |   No     | actors.id                 |                            |
+| time                   | timestamp   |   No     |                           |                            |
+| item_id                | serial      |   No     | referenced_objects.id     |                            |
+
+##### Indexes
+
+| Column(s)               | Other Properties | Notes                                       |
+|:------------------------|:-----------------|:--------------------------------------------|
+| type                    |                  | Search by annotation type                   |
+| time                    |                  | Search by date                              |
