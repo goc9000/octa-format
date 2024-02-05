@@ -18,9 +18,9 @@ Table of Contents
 - [Design Goals](#design-goals)
 - [Comparison to Alternatives](#comparison-to-alternatives)
 - [Conceptual Overview](#conceptual-overview)
-  * [The base layer](#the-base-layer)
-  * [The annotation layer](#the-annotation-layer)
-  * [The compression/deduplication layer](#the-compressiondeduplication-layer)
+  * [The Base Layer](#the-base-layer)
+  * [The Annotation Layer](#the-annotation-layer)
+  * [The Compression/Deduplication Layer](#the-compressiondeduplication-layer)
 - [Low-Level Format](#low-level-format)
   * [Canonical File-Based Implementation](#canonical-file-based-implementation)
   * [Other Implementations](#other-implementations)
@@ -161,7 +161,7 @@ The latter two layers are entirely optional. A crawler need not add annotations,
 general. Similarly, a simple crawler does not need to bother with deduplication or compression - another program can
 process and deduplicate the archive later (or on the fly).
 
-### The base layer
+### The Base Layer
 
 Data in the base layer is structured according to this hierarchy:
 
@@ -225,7 +225,7 @@ Note that external IDs are only unique within the scope of the immediate parent.
 archive, but e.g. tab IDs are only unique within a session. The same tab ID can be reused for tabs appearing in
 different sessions.
 
-### The annotation layer
+### The Annotation Layer
 
 All important objects in the archive can have any number of annotations attached. This includes sessions, tabs and
 requests, but also sub-objects such as headers and response bodies.
@@ -267,7 +267,7 @@ actor.
 Actors are defined in a registry contained in the archive. Like tags, actors have both a user-readable label and a
 machine-readable identifier. Between archives, actors with the same identifier are considered to be equivalent.
 
-### The compression/deduplication layer
+### The Compression/Deduplication Layer
 
 A key feature of the way compression and deduplication are implemented in the format is that they are **opt-in** on a
 per-object basis. Some objects may be compressed, others not. Some instances of a piece of content may be deduplicated
