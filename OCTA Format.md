@@ -1030,7 +1030,7 @@ access.
 
   - Lock the database exclusively
   - Check whether the default/specific tab already exists (if so, just use its `id`)
-  - Create the tab as per the normal procedure
+  - Otherwise, create the tab as per the normal procedure
   - Unlock the database
 
   This ensures safe concurrency if multiple threads in the crawler are likely to try to create a specific tab at the
@@ -1146,6 +1146,10 @@ fact that it was there, an alternate procedure is available:
 
 - If not using deduplication, the row can just be INSERTed directly and its `id` used as before
 - An in-memory cache may be useful here if the synchronization issues are handled
+
+Note: it is recommended to normalize header names (e.g. by lowercasing or titlecasing) before registering them but the
+standard does not enforce this, nor should programs necessarily expect this to be the case in any encountered archive.
+Deduplication utilities should consider header name normalization as a potential operation during their processing.
 
 ##### Subprocedure: Adding a Header Value
 
