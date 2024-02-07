@@ -437,16 +437,17 @@ types, we will cover them all there, together with all their translations to maj
 | start_time  | timestamp   |   Yes    |                                   |
 | end_time    | timestamp   |   Yes    |                                   |
 
+
+[^ain]: Some SQL dialects have a different way of defining an auto-incrementing surrogate ID column. For PostgreSQL, for
+        instance, its native `serial` datatype should be used instead.
+
 ##### Indexes
 
 | Column(s)   | Other Properties | Notes                                                                    |
 |:------------|:-----------------|:-------------------------------------------------------------------------|
 | external_id | UNIQUE           | Mandate external ID uniqueness and allow finding sessions by external ID |
 | start_time  |                  | For efficiently sorting sessions by date                                 |
-
-
-[^ain]: Some SQL dialects have a different way of defining an auto-incrementing surrogate ID column. For PostgreSQL, for
-        instance, its native `serial` datatype should be used instead.
+| end_time    |                  | Find sessions that are still open                                        |
 
 
 #### Table: `tabs`
@@ -581,6 +582,7 @@ time). A display/processing program should skip processing such "empty" requests
 | tab_id, external_id     | UNIQUE           | Mandate external ID uniqueness per tab and allow finding requests by external ID |
 | tab_id, sequence_no     |                  | Efficiently sort requests through time (within a tab)                            |
 | tab_id, time_started    |                  | Efficiently sort requests through time (within a tab)                            |
+| tab_id, is_complete     |                  | Find still-pending requests (within a tab)                                       |
 
 Note: more indexes are likely to be added here in future versions of the format, as more efficiency requirements are
 revealed in practice.
