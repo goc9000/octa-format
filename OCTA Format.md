@@ -34,6 +34,7 @@ Table of Contents
   * [Procedures for Recording](#procedures-for-recording)
   * [Procedures for Annotation](#procedures-for-annotation)
   * [Procedures for Monitoring](#procedures-for-monitoring)
+- [General Principles for Cooperation](#general-principles-for-cooperation)
 
 
 Design Goals
@@ -1353,3 +1354,24 @@ the same general strategy outlined above (i.e. make a note of the maximum `id`, 
 a higher `id`, which must be newly added). From any such entry we can access the `item_id` and the corresponding entry
 in the `referenced_objects` table which gives an indication as to the exact type and object to which the annotation has
 just been added.
+
+
+General Principles for Cooperation
+----------------------------------
+
+We end by outlining a few principles for safe cooperation between the parties accessing an archive: crawlers, viewers,
+analyzers, etc.
+
+- Crawlers should expect session, tag, request etc. internal IDs to be stable while they are operating. A crawler can
+  expect there to be no migration or deletion operations that would affect the current session or any objects it uses in
+  common with others.
+
+- Viewer programs may or may not choose to handle migrations/deletions that occur while observing an archive, depending
+  on their complexity.
+
+- If an analysis program is run concurrently with a crawler (e.g. to add annotations that enrich the output of the
+  crawler), it is best if it only adds annotations anew, as opposed to modifying existing ones. This ensures it does not
+  interfere with the crawler and that viewers using the simple polling system can observe annotations as they happen.
+
+- Programs that do massive migration, deduplication or deletion operations on the archive should have exclusive access
+  and are best run offline (i.e. without any viewer or crawler accessing the archive at that time).
