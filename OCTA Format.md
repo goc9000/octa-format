@@ -33,6 +33,7 @@ Table of Contents
 - [Procedures](#procedures)
   * [Procedures for Recording](#procedures-for-recording)
   * [Procedures for Annotation](#procedures-for-annotation)
+  * [Procedures for Monitoring](#procedures-for-monitoring)
 
 
 Design Goals
@@ -1265,3 +1266,90 @@ The procedure is analogous to that for inserting a new URL, using the table `req
 - Optional: for certain annotation types, you may want to do this in a transaction, and also check for already existing
   annotations, so that they may be deleted or replaced if appropriate. E.g. an analysis annotation may need to be
   replaced if the analysis is repeated at a later date.
+
+
+### Procedures for Monitoring
+
+Given the limitations of database engines, keeping track of ongoing changes in an active archive is an inherently
+imperfect process that must make heavy use of polling (unless the parties can agree on some other out-of-band signalling
+mechanism via sockets, the network etc., but this is outside the scope of the OCTA format). Nevertheless we can present
+some procedures or ideas for how this could be accomplished.
+
+All procedures presented here rely on the assumption that the changes to the archive are mostly additive - requests are
+being recorded or updated, annotations are being added etc., but no migration or deletion of data is taking place. If
+the latter is the case, the strategy needs to be significantly adjusted in a manner that exceeds the scope of this
+section.
+
+#### Polling the Archive for Changes
+
+- Start with an empty list/set of sessions to be monitored
+- In a transaction, atomically:
+  - Find all sessions for which the `end_time` is still NULL and add them to the set of sessions to be monitored
+      - One may skip sessions with a `start_time` too far in the past, to account for sessions that were abandoned
+        before the `end_time` could be set
+      - Alternatively, one may focus on only one session, explicitly chosen from some UI
+  - Make a note of the last `id` in the `sessions` table
+- Each polling cycle:
+  - Check for any entries in the `sessions` table with an `id` greater than the previously recorded maximum
+      - These are newly created sessions and should be added to the monitoring list
+      - Update the known maximum `id` accordingly
+  - For each session in the monitoring list:
+      - Check for changes in the session as per the procedure in the following section
+      - If the `end_time` field has been set to non-NULL, consider the session closed and remove it from the monitoring
+        list
+
+#### Polling a Session for Changes
+
+The procedure is similar in structure to that for the parent archive object.
+
+- Start with an empty list/set of tabs to be monitored
+- In a transaction, atomically:
+  - Find all tabs in that session for which `time_closed` is still NULL, and add them to the set of tabs to be monitored
+  - Make a note of the last `id` in the `tabs` table (either only for that session, or all sessions; any strategy is
+    fine if applied consistently)
+- Each polling cycle:
+  - Check for any entries in the `tabs` table with an `id` greater than the previously recorded maximum
+      - These are newly created tabs and should be added to the monitoring list
+      - Update the known maximum `id` accordingly
+  - For each tab in the monitoring list:
+      - Check for changes in the tab as per the procedure in the following section
+      - If the `time_closed` field has been set to non-NULL, consider the tab closed and remove it from the monitoring
+        list
+
+#### Polling a Tab for Changes
+
+The procedure is similar in structure to that for the parent session object.
+
+- Start with an empty list/set of requests to be monitored
+- In a transaction, atomically:
+  - Find all requests in that tab for which `is_complete` is still NULL or 0, and add them to the set of requests to be
+    monitored
+  - Make a note of the last `id` in the `requests` table (either only for that tab, or in general; any strategy is
+    fine if applied consistently)
+- Each polling cycle:
+  - Check for any entries in the `requests` table with an `id` greater than the previously recorded maximum
+      - These are newly created requests and should be added to the monitoring list
+      - Update the known maximum `id` accordingly
+  - For each request in the monitoring list:
+      - Check for changes in the request as per the procedure in the following section
+      - If the `is_complete` field has been set to true, consider the request closed and remove it from the monitoring
+        list
+
+#### Polling a Request for Changes
+
+Although we could in theory use the `response_arrived`, etc. fields to detect changes in the request more granularly, it
+is simple to just re-fetch the entire `request` row on every polling cycle, together with the associated
+request/response header entries and the POST data/response body attachments. Large binary data should only be fetched
+once.
+
+#### Polling for New Annotations
+
+Unlike polling for request updates during an active crawling session, polling for annotations is trickier because they
+may be added to objects (sessions, requests etc.) after they have been closed and are no longer in the "to monitor"
+lists.
+
+One possible strategy is to poll for new entries in the `comments`, `object_tags` and `custom_annotations` tables, using
+the same general strategy outlined above (i.e. make a note of the maximum `id`, then be on the lookout for entries with
+a higher `id`, which must be newly added). From any such entry we can access the `item_id` and the corresponding entry
+in the `referenced_objects` table which gives an indication as to the exact type and object to which the annotation has
+just been added.
