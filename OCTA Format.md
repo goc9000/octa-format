@@ -332,6 +332,87 @@ facilities to boot).
 
 ### The Cooperation Layer
 
+This layer provides functionality for helping safe and efficient cooperation between multiple parties accessing the
+archive simultaneously (for instance, by assisting with locking or with notifications of changed objects). Specifically,
+it does so by using special tables in the database as a communications channel. Although this solution is not ideal and
+other out-of-band mechanisms (sockets, pipes etc) are more efficient, common access to the database is the only
+assumption the OCTA format can rely on and thus the standard layer only covers this scenario. Implementations are always
+free to use any other proprietary/ad-hoc synchronization methods are available in their particular deployment scenario.
+
+In general, all data stored by this layer should be considered temporary and volatile. It is only of interest for
+programs accessing the database presently. Old data (older than a few hours or maybe even minutes) should be ignored and
+may be safely garbage-collected by any of the parties. Ideally, all data in the layer should be discarded entirely once
+the last party closes the database. Some database engines offer functionality for enforcing this (e.g. scheduled
+events) but this should not be strictly relied upon.
+
+The cooperation layer offers two kinds of services: **advisory locks** and **notifications**.
+
+#### Advisory Locks
+
+Advisory locks are about definining locks at a more detailed and granular level than the per-database, per-table or
+per-row locks supported by the database engine. A crawler could e.g., take a lock indicating that no deletions or
+migrations should be performed on the specific session it is recording, but that other sessions are fair game (as long
+as no common objects are disturbed). Conversely, an automated deduplication/consolidation program could take a lock
+preventing interference from other similar programs while it performs disruptive changes to the database (changing IDs,
+deletions etc).
+
+Being advisory, such locks are not enforced by the database engine itself. Cooperating programs must agree to explicitly
+consult the lock database and abide by its rules. In particular, a program should take great care to ensure that it
+releases any locks it holds even in the event of a crash. Since this is not guaranteed, however, the standard also has
+provision for recognizing abandoned locks and allowing programs to break (forcefully ignore and delete) them.
+
+Advisory locks store and provide the following information:
+
+- The type of the lock, which is a machine-readable identifier that describes what the lock *means*, i.e. what is
+  demanded of other parties to the database (e.g. not change IDs, not access this or that object)
+- The particular objects to which the lock applies (e.g. the entire database, a particular session etc)
+- The program that holds the lock, described both with a human-readable title and a machine-readable identifier
+- The time when the lock was taken
+- A "heartbeat" time that must be regularly updated e.g. every minute by the holder if it still wishes to keep the lock.
+  Should it fail to do so, other parties may assume that the holder crashed, the lock is stale and may be broken
+  (deleted).
+
+##### Predefined Lock Types
+
+The lock type is a string usually in FQDN (Fully Qualified Domain Name) format, e.g. `com.company.crawling_lock`. As an
+exception, lock types with no domain information (no periods in the name) will be assumed to be part of the
+`org.atmfjstc.octa_format` domain, i.e. `generic_crawling_lock` is a stand-in for
+`org.atmfjstc.octa_format.generic_crawling_lock`.
+
+Note that besides the standard lock types defined by the OCTA standard, proprietary programs can use their own lock
+types, with the caveat that only compatible proprietary parties will recognize them.
+
+Currently the standard defines the following lock types:
+
+###### `org.atmfjstc.octa_format.generic_crawling_lock`
+
+This lock is taken by a crawler on the session it is recording. While held by the crawler, other parties:
+
+- May not delete, change the IDs of, or modify the contents of main objects in the session (the session, its tabs,
+  requests therein and the attached headers and bodies)
+- May not add main objects to the session
+- May not delete, change the IDs of, or modify the contents of entries in lookups that are used by the session in common
+  with others (e.g. header names, header values, even actors or tag definitions if the crawler also does tagging). In
+  practice this means that the entire header name/value etc. space should be protected.
+- May manipulate other sessions at will as long as they do not disturb common objects
+- May add annotations to the session and its objects
+- May add entries to the common header names, header values, actors etc. spaces
+
+Only one party may hold a `generic_crawling_lock` on a specific session at any given time. The lock is also exclusive
+with the `generic_migration_lock` on the database.
+
+###### `org.atmfjstc.octa_format.generic_migration_lock`
+
+This lock is taken by deduplication/migration/etc. programs that need to be free to do disruptive reorganization of the
+entire archive, e.g. collapsing duplicate header values etc. into unique deduplicated entries. While a program holds
+this lock, other parties should not do any operation on the archive other than checking for the lock being released.
+Once the operation is complete, other parties should assume that all IDs have changed and clear any caches thereof.
+
+The `generic_migration_lock` is exclusive and applies to the entire database. Only one party may hold it at any given
+time.
+
+#### Notifications
+
 (TODO: add content here)
 
 
