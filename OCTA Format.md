@@ -21,6 +21,7 @@ Table of Contents
   * [The Base Layer](#the-base-layer)
   * [The Annotation Layer](#the-annotation-layer)
   * [The Compression/Deduplication Layer](#the-compressiondeduplication-layer)
+  * [The Cooperation Layer](#the-cooperation-layer)
 - [Low-Level Format](#low-level-format)
   * [Canonical File-Based Implementation](#canonical-file-based-implementation)
   * [Other Implementations](#other-implementations)
@@ -30,10 +31,12 @@ Table of Contents
   * [Tables for the Base Layer](#tables-for-the-base-layer)
   * [Tables for the Compression/Deduplication Layer](#tables-for-the-compressiondeduplication-layer)
   * [Tables for the Annotation Layer](#tables-for-the-annotation-layer)
+  * [Tables for the Cooperation Layer](#tables-for-the-cooperation-layer)
 - [Procedures](#procedures)
   * [Procedures for Recording](#procedures-for-recording)
   * [Procedures for Annotation](#procedures-for-annotation)
   * [Procedures for Monitoring](#procedures-for-monitoring)
+  * [Procedures for Cooperation](#procedures-for-cooperation)
 - [General Principles for Cooperation](#general-principles-for-cooperation)
 
 
@@ -157,16 +160,20 @@ alternative to compare features with.
 Conceptual Overview
 -------------------
 
-The content in an OCTA archive can be seen as fitting in one of three functional layers:
+The content in an OCTA archive can be seen as fitting in one of four functional layers:
 
 1. **The base layer**: The core data we are interested in: sessions, HTTP requests, responses
 2. **The annotations layer**: Tags, comments, analyses attached to base layer objects.
 3. **The compression/deduplication layer**: Extra data (hashes etc) that enables the compression and deduplication
    functionality.
+4. **The cooperation layer**: Temporary data that enables more efficient cooperation between multiple parties accessing
+   the archive at the same time.
 
-The latter two layers are entirely optional. A crawler need not add annotations, nor even support their handling in
+All layers but the first are entirely optional. A crawler need not add annotations, nor even support their handling in
 general. Similarly, a simple crawler does not need to bother with deduplication or compression - another program can
-process and deduplicate the archive later (or on the fly).
+process and deduplicate the archive later (or on the fly). Finally, simple programs need not use the advanced
+cooperation features and can get by with simple polling and using only the basic locking features of the database
+engine.
 
 ### The Base Layer
 
@@ -322,6 +329,10 @@ facilities to boot).
 
 [^url]: Not only are URLs frequently repeated, but modern sites also feature data URLs that can be very large.
         Deduplicating these is a must.
+
+### The Cooperation Layer
+
+(TODO: add content here)
 
 
 Low-Level Format
@@ -999,6 +1010,12 @@ Notes:
 | time                    |                  | Search by date                              |
 
 
+### Tables for the Cooperation Layer
+
+
+(TODO: add content here)
+
+
 Procedures
 ----------
 
@@ -1354,6 +1371,11 @@ the same general strategy outlined above (i.e. make a note of the maximum `id`, 
 a higher `id`, which must be newly added). From any such entry we can access the `item_id` and the corresponding entry
 in the `referenced_objects` table which gives an indication as to the exact type and object to which the annotation has
 just been added.
+
+
+### Procedures for Cooperation
+
+(TODO: add content here)
 
 
 General Principles for Cooperation
