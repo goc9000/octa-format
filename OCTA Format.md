@@ -414,7 +414,101 @@ Currently the standard defines the following lock types:
 
 #### Notifications
 
-(TODO: add content here)
+OCTA defines a simple notifications system whereby programs accessing the archive can use tables in the database to
+inform other concurrent parties about changes being made to the archive content, alleviating the need for them to
+blindly perform polling (or at least allowing for faster updates and/or more directed and efficient polling).
+
+Similarly to advisory locks, notification entries provide the following information:
+
+- The time when the notification was emitted
+- The program that emitted the notification, described both with a human-readable title and a machine-readable identifier
+- The type of the notification, which is a machine-readable identifier that identifies the format the notification data is in. OCTA defines only one notification
+  type, `org.atmfjstc.octa_format.standard_notification`, but vendors may provide their own custom notification types and schemas. Programs will of course ignore
+  notification types they do not support.
+- The actual notification content, in JSON format
+
+##### Predefined Notifications
+
+OCTA defines a number of standard notifications within the general type `org.atmfjstc.octa_format.standard_notification`. All such notifications have a schema
+in the general form:
+
+    {
+        "event": "...",
+        ...   // event-specific fields
+    }
+
+The following notifications are defined, as per the value of the `event` field:
+
+- `created`
+
+  This notifies other parties that we have just created an object (e.g. session, request, annotation etc). The full
+  schema is:
+
+      ```
+      {
+          "event": "created",
+          "object_type": ...,
+          "object_id": ...
+      }
+      ```
+
+  With the following values supported for `object_type`:
+
+  | Value    | Meaning                                      |
+  |:---------|:---------------------------------------------|
+  | session  | A session being added to the archive         |
+  | tab      | A tab being added to a session               |
+  | request  | A request being added to a tab               |
+  | actor    | A new actor being defined (for annotations)  |
+  | tag_type | A new tag type being defined                 |
+  | tag      | A tag being attached to an object            |
+  | comment  | A comment being made regarding an object     |
+  | custom   | A custom annotation being added to an object |
+
+  Finally, `object_id` contains an identifier (usually a surrogate ID for a specific in the database) that allows
+  identifying the exact object affected. Note that surrogate IDs, and thus object_id's, are not portable, but
+  notification data is intended to be volatile and non-portable anyway.
+
+- `modified`
+
+  This notifies other parties that we have just modified an object. Modification implies changing some of the properties
+  of the object (e.g. name etc.), without changing the object's ID or location.
+
+  The full schema is:
+
+      ```
+      {
+          "event": "modified",
+          "object_type": ...,
+          "object_id": ...
+      }
+      ```
+
+  With the same values supported for `object_type` as before.
+
+  Note that modification events are not emitted for adding or modifying a subordinate object. E.g. adding requests or
+  changing requests within a session, is not seen as a modification to the session itself. However, adding or removing
+  headers, bodies etc. to a request does register as a modification event, because there is no `object_type` for headers
+  and they are not otherwise viewed as independently addressable objects in the archive.
+
+- `deleted`
+
+  This notifies other parties that we have just deleted an object.
+
+  The full schema is:
+
+      ```
+      {
+          "event": "deleted",
+          "object_type": ...,
+          "object_id": ...
+      }
+      ```
+
+  With the same values supported for `object_type` as before.
+
+  Deletion events are not emitted for subordinate objects, e.g. when a session is deleted, we do not get deletion events
+  for each of the individual tabs and the requests it used to contain.
 
 
 Low-Level Format
