@@ -384,32 +384,33 @@ types, with the caveat that only compatible proprietary parties will recognize t
 
 Currently the standard defines the following lock types:
 
-###### `org.atmfjstc.octa_format.generic_crawling_lock`
+- `org.atmfjstc.octa_format.generic_crawling_lock`
 
-This lock is taken by a crawler on the session it is recording. While held by the crawler, other parties:
+  This lock is taken by a crawler on the session it is recording. While held by the crawler, other parties:
 
-- May not delete, change the IDs of, or modify the contents of main objects in the session (the session, its tabs,
-  requests therein and the attached headers and bodies)
-- May not add main objects to the session
-- May not delete, change the IDs of, or modify the contents of entries in lookups that are used by the session in common
-  with others (e.g. header names, header values, even actors or tag definitions if the crawler also does tagging). In
-  practice this means that the entire header name/value etc. space should be protected.
-- May manipulate other sessions at will as long as they do not disturb common objects
-- May add annotations to the session and its objects
-- May add entries to the common header names, header values, actors etc. spaces
+  - May not delete, change the IDs of, or modify the contents of main objects in the session (the session, its tabs,
+    requests therein and the attached headers and bodies)
+  - May not add main objects to the session
+  - May not delete, change the IDs of, or modify the contents of entries in lookups that are used by the session in
+    common with others (e.g. header names, header values, even actors or tag definitions if the crawler also does
+    tagging). In practice this means that the entire header name/value etc. space should be protected.
+  - May manipulate other sessions at will as long as they do not disturb common objects
+  - May add annotations to the session and its objects
+  - May add entries to the common header names, header values, actors etc. spaces
 
-Only one party may hold a `generic_crawling_lock` on a specific session at any given time. The lock is also exclusive
-with the `generic_migration_lock` on the database.
+  Only one party may hold a `generic_crawling_lock` on a specific session at any given time. The lock is also exclusive
+  with the `generic_migration_lock` on the database.
 
-###### `org.atmfjstc.octa_format.generic_migration_lock`
+- `org.atmfjstc.octa_format.generic_migration_lock`
 
-This lock is taken by deduplication/migration/etc. programs that need to be free to do disruptive reorganization of the
-entire archive, e.g. collapsing duplicate header values etc. into unique deduplicated entries. While a program holds
-this lock, other parties should not do any operation on the archive other than checking for the lock being released.
-Once the operation is complete, other parties should assume that all IDs have changed and clear any caches thereof.
+  This lock is taken by deduplication/migration/etc. programs that need to be free to do disruptive reorganization of
+  the entire archive, e.g. collapsing duplicate header values etc. into unique deduplicated entries. While a program
+  holds this lock, other parties should not do any operation on the archive other than checking for the lock being
+  released. Once the operation is complete, other parties should assume that all IDs have changed and clear any caches
+  thereof.
 
-The `generic_migration_lock` is exclusive and applies to the entire database. Only one party may hold it at any given
-time.
+  The `generic_migration_lock` is exclusive and applies to the entire database. Only one party may hold it at any given
+  time.
 
 #### Notifications
 
