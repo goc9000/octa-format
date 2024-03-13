@@ -766,12 +766,12 @@ time). A display/processing program should skip processing such "empty" requests
 
 ##### Indexes
 
-| Column(s)               | Other Properties | Notes                                                                            |
-|:------------------------|:-----------------|:---------------------------------------------------------------------------------|
-| tab_id, external_id     | UNIQUE           | Mandate external ID uniqueness per tab and allow finding requests by external ID |
-| tab_id, sequence_no     |                  | Efficiently sort requests through time (within a tab)                            |
-| tab_id, time_started    |                  | Efficiently sort requests through time (within a tab)                            |
-| tab_id, is_complete     |                  | Find still-pending requests (within a tab)                                       |
+| Column(s)            | Other Properties | Notes                                                                            |
+|:---------------------|:-----------------|:---------------------------------------------------------------------------------|
+| tab_id, external_id  | UNIQUE           | Mandate external ID uniqueness per tab and allow finding requests by external ID |
+| tab_id, sequence_no  |                  | Efficiently sort requests through time (within a tab)                            |
+| tab_id, time_started |                  | Efficiently sort requests through time (within a tab)                            |
+| tab_id, is_complete  |                  | Find still-pending requests (within a tab)                                       |
 
 Note: more indexes are likely to be added here in future versions of the format, as more efficiency requirements are
 revealed in practice.
@@ -798,21 +798,21 @@ added for the header, with a value featuring a comma-separated list as per the H
 
 ##### Indexes
 
-| Column(s)                        | Other Properties | Notes                                                                   |
-|:---------------------------------|:-----------------|:------------------------------------------------------------------------|
-| request_id                       |                  | Find the headers of a particular request                                |
-| header_name_id, header_value_id  |                  | Efficiently find all headers of a given type or a given key-value combo |
-| header_value_id                  |                  | Efficiently find all headers featuring a given value                    |
+| Column(s)                       | Other Properties | Notes                                                                   |
+|:--------------------------------|:-----------------|:------------------------------------------------------------------------|
+| request_id                      |                  | Find the headers of a particular request                                |
+| header_name_id, header_value_id |                  | Efficiently find all headers of a given type or a given key-value combo |
+| header_value_id                 |                  | Efficiently find all headers featuring a given value                    |
 
 
 #### Table: `request_header_names`
 
 ##### Columns
 
-| Name        | Type        | Nullable | Other Properties           |
-|:------------|:------------|:--------:|:---------------------------|
-| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
-| name        | string(200) |   No     |                            |
+| Name | Type        | Nullable | Other Properties           |
+|:-----|:------------|:--------:|:---------------------------|
+| id   | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| name | string(200) |   No     |                            |
 
 Note that for the purposes of deduplication, programs can query by `name` directly to check for duplicates, as the field
 data is small enough to allow for direct indexing.
@@ -828,11 +828,11 @@ data is small enough to allow for direct indexing.
 
 ##### Columns
 
-| Name        | Type        | Nullable | Other Properties           |
-|:------------|:------------|:--------:|:---------------------------|
-| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
-| value       | text        |   No     |                            |
-| hash_sha256 | bytes(32)   |   Yes    |                            |
+| Name        | Type      | Nullable | Other Properties           |
+|:------------|:----------|:--------:|:---------------------------|
+| id          | serial    |   No     | PRIMARY KEY, AUTOINCREMENT |
+| value       | text      |   No     |                            |
+| hash_sha256 | bytes(32) |   Yes    |                            |
 
 The `hash_sha256` column is part of the deduplication layer and contains the SHA-256 hash of the header value, after
 encoding as UTF-8. The hash enables deduplication by allowing for programs to look up a value by content, even for very
@@ -864,11 +864,11 @@ This table works just like `request_headers`, but stores the headers for the HTT
 
 ##### Indexes
 
-| Column(s)                        | Other Properties | Notes                                                                   |
-|:---------------------------------|:-----------------|:------------------------------------------------------------------------|
-| request_id                       |                  | Find the response headers for a particular request                      |
-| header_name_id, header_value_id  |                  | Efficiently find all headers of a given type or a given key-value combo |
-| header_value_id                  |                  | Efficiently find all headers featuring a given value                    |
+| Column(s)                       | Other Properties | Notes                                                                   |
+|:--------------------------------|:-----------------|:------------------------------------------------------------------------|
+| request_id                      |                  | Find the response headers for a particular request                      |
+| header_name_id, header_value_id |                  | Efficiently find all headers of a given type or a given key-value combo |
+| header_value_id                 |                  | Efficiently find all headers featuring a given value                    |
 
 
 #### Table: `response_header_names`
@@ -878,10 +878,10 @@ response headers.
 
 ##### Columns
 
-| Name        | Type        | Nullable | Other Properties           |
-|:------------|:------------|:--------:|:---------------------------|
-| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
-| name        | string(200) |   No     |                            |
+| Name | Type        | Nullable | Other Properties           |
+|:-----|:------------|:--------:|:---------------------------|
+| id   | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| name | string(200) |   No     |                            |
 
 ##### Indexes
 
@@ -897,11 +897,11 @@ response headers.
 
 ##### Columns
 
-| Name        | Type        | Nullable | Other Properties           |
-|:------------|:------------|:--------:|:---------------------------|
-| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
-| value       | text        |   No     |                            |
-| hash_sha256 | bytes(32)   |   Yes    |                            |
+| Name        | Type      | Nullable | Other Properties           |
+|:------------|:----------|:--------:|:---------------------------|
+| id          | serial    |   No     | PRIMARY KEY, AUTOINCREMENT |
+| value       | text      |   No     |                            |
+| hash_sha256 | bytes(32) |   Yes    |                            |
 
 ##### Indexes
 
@@ -914,13 +914,13 @@ response headers.
 
 This table stores the content for both HTTP response bodies and request POST data alike.
 
-| Name        | Type        | Nullable | Other Properties           |
-|:------------|:------------|:--------:|:---------------------------|
-| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
-| content     | bytes       |   Yes    |                            |
-| size        | integer     |   Yes    |                            |
-| compression | string(16)  |   Yes    |                            |
-| hash_sha256 | bytes(32)   |   Yes    |                            |
+| Name        | Type       | Nullable | Other Properties           |
+|:------------|:-----------|:--------:|:---------------------------|
+| id          | serial     |   No     | PRIMARY KEY, AUTOINCREMENT |
+| content     | bytes      |   Yes    |                            |
+| size        | integer    |   Yes    |                            |
+| compression | string(16) |   Yes    |                            |
+| hash_sha256 | bytes(32)  |   Yes    |                            |
 
 Column notes:
 
@@ -961,11 +961,11 @@ headers and trailers as per [RFC 1950](https://datatracker.ietf.org/doc/html/rfc
 
 This table stores URLs (which may be quite large, e.g. if they are data URLs).
 
-| Name        | Type        | Nullable | Other Properties           |
-|:------------|:------------|:--------:|:---------------------------|
-| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
-| url         | text        |   No     |                            |
-| hash_sha256 | bytes(32)   |   Yes    |                            |
+| Name        | Type      | Nullable | Other Properties           |
+|:------------|:----------|:--------:|:---------------------------|
+| id          | serial    |   No     | PRIMARY KEY, AUTOINCREMENT |
+| url         | text      |   No     |                            |
+| hash_sha256 | bytes(32) |   Yes    |                            |
 
 As usual, `hash_sha256` is the hash of the URL value, after UTF-8 encoding.
 
@@ -982,10 +982,10 @@ As for header names, duplicates can be checked for using the value field directl
 
 ##### Columns
 
-| Name        | Type        | Nullable | Other Properties           |
-|:------------|:------------|:--------:|:---------------------------|
-| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
-| value       | string(250) |   No     |                            |
+| Name  | Type        | Nullable | Other Properties           |
+|:------|:------------|:--------:|:---------------------------|
+| id    | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| value | string(250) |   No     |                            |
 
 ##### Indexes
 
@@ -1000,10 +1000,10 @@ Functions similarly to `status_texts`.
 
 ##### Columns
 
-| Name        | Type        | Nullable | Other Properties           |
-|:------------|:------------|:--------:|:---------------------------|
-| id          | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
-| value       | string(250) |   No     |                            |
+| Name  | Type        | Nullable | Other Properties           |
+|:------|:------------|:--------:|:---------------------------|
+| id    | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| value | string(250) |   No     |                            |
 
 ##### Indexes
 
@@ -1056,15 +1056,15 @@ Notes:
 
 ##### Indexes
 
-| Column(s)               | Other Properties | Notes                          |
-|:------------------------|:-----------------|:-------------------------------|
-| session_id              | UNIQUE           | Enforce uniqueness             |
-| tab_id                  | UNIQUE           | Enforce uniqueness             |
-| request_id              | UNIQUE           | Enforce uniqueness             |
-| url_id                  | UNIQUE           | Enforce uniqueness             |
-| body_id                 | UNIQUE           | Enforce uniqueness             |
-| request_header_val_id   | UNIQUE           | Enforce uniqueness             |
-| response_header_val_id  | UNIQUE           | Enforce uniqueness             |
+| Column(s)              | Other Properties | Notes              |
+|:-----------------------|:-----------------|:-------------------|
+| session_id             | UNIQUE           | Enforce uniqueness |
+| tab_id                 | UNIQUE           | Enforce uniqueness |
+| request_id             | UNIQUE           | Enforce uniqueness |
+| url_id                 | UNIQUE           | Enforce uniqueness |
+| body_id                | UNIQUE           | Enforce uniqueness |
+| request_header_val_id  | UNIQUE           | Enforce uniqueness |
+| response_header_val_id | UNIQUE           | Enforce uniqueness |
 
 
 #### Table: `actors`
@@ -1078,17 +1078,17 @@ program checks and creates its necessary actors ahead of time instead of during 
 
 ##### Columns
 
-| Name                   | Type        | Nullable | Other Properties           |
-|:-----------------------|:------------|:--------:|:---------------------------|
-| id                     | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
-| identifier             | string(200) |   No     |                            |
-| label                  | string(200) |   No     |                            |
+| Name       | Type        | Nullable | Other Properties           |
+|:-----------|:------------|:--------:|:---------------------------|
+| id         | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| identifier | string(200) |   No     |                            |
+| label      | string(200) |   No     |                            |
 
 ##### Indexes
 
-| Column(s)               | Other Properties | Notes                                       |
-|:------------------------|:-----------------|:--------------------------------------------|
-| identifier              | UNIQUE           | Search by identifier and enforce uniqueness |
+| Column(s)  | Other Properties | Notes                                       |
+|:-----------|:-----------------|:--------------------------------------------|
+| identifier | UNIQUE           | Search by identifier and enforce uniqueness |
 
 
 #### Table: `tags`
@@ -1100,17 +1100,17 @@ The same considerations as for `actors` apply here.
 
 ##### Columns
 
-| Name                   | Type        | Nullable | Other Properties           |
-|:-----------------------|:------------|:--------:|:---------------------------|
-| id                     | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
-| identifier             | string(200) |   No     |                            |
-| label                  | string(200) |   No     |                            |
+| Name       | Type        | Nullable | Other Properties           |
+|:-----------|:------------|:--------:|:---------------------------|
+| id         | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| identifier | string(200) |   No     |                            |
+| label      | string(200) |   No     |                            |
 
 ##### Indexes
 
-| Column(s)               | Other Properties | Notes                                       |
-|:------------------------|:-----------------|:--------------------------------------------|
-| identifier              | UNIQUE           | Search by identifier and enforce uniqueness |
+| Column(s)  | Other Properties | Notes                                       |
+|:-----------|:-----------------|:--------------------------------------------|
+| identifier | UNIQUE           | Search by identifier and enforce uniqueness |
 
 
 #### Table: `object_tags`
@@ -1121,38 +1121,38 @@ Note that there is no ordering defined between the tags attached to an object (o
 
 ##### Columns
 
-| Name                   | Type      | Nullable | Foreign Key To            | Other Properties           |
-|:-----------------------|:----------|:--------:|:--------------------------|:---------------------------|
-| id                     | serial    |   No     |                           | PRIMARY KEY, AUTOINCREMENT |
-| tag_id                 | serial    |   No     | tags.id                   |                            |
-| actor_id               | serial    |   No     | actors.id                 |                            |
-| time_tagged            | timestamp |   No     |                           |                            |
-| item_id                | serial    |   No     | referenced_objects.id     |                            |
+| Name        | Type      | Nullable | Foreign Key To        | Other Properties           |
+|:------------|:----------|:--------:|:----------------------|:---------------------------|
+| id          | serial    |   No     |                       | PRIMARY KEY, AUTOINCREMENT |
+| tag_id      | serial    |   No     | tags.id               |                            |
+| actor_id    | serial    |   No     | actors.id             |                            |
+| time_tagged | timestamp |   No     |                       |                            |
+| item_id     | serial    |   No     | referenced_objects.id |                            |
 
 ##### Indexes
 
-| Column(s)               | Other Properties | Notes                                       |
-|:------------------------|:-----------------|:--------------------------------------------|
-| time_tagged             |                  | Search by date                              |
+| Column(s)   | Other Properties | Notes          |
+|:------------|:-----------------|:---------------|
+| time_tagged |                  | Search by date |
 
 
 #### Table: `comments`
 
 ##### Columns
 
-| Name                   | Type      | Nullable | Foreign Key To            | Other Properties           |
-|:-----------------------|:----------|:--------:|:--------------------------|:---------------------------|
-| id                     | serial    |   No     |                           | PRIMARY KEY, AUTOINCREMENT |
-| comment                | text      |   No     |                           |                            |
-| actor_id               | serial    |   No     | actors.id                 |                            |
-| time                   | timestamp |   No     |                           |                            |
-| item_id                | serial    |   No     | referenced_objects.id     |                            |
+| Name     | Type      | Nullable | Foreign Key To        | Other Properties           |
+|:---------|:----------|:--------:|:----------------------|:---------------------------|
+| id       | serial    |   No     |                       | PRIMARY KEY, AUTOINCREMENT |
+| comment  | text      |   No     |                       |                            |
+| actor_id | serial    |   No     | actors.id             |                            |
+| time     | timestamp |   No     |                       |                            |
+| item_id  | serial    |   No     | referenced_objects.id |                            |
 
 ##### Indexes
 
-| Column(s)               | Other Properties | Notes                                       |
-|:------------------------|:-----------------|:--------------------------------------------|
-| time                    |                  | Search by date                              |
+| Column(s) | Other Properties | Notes          |
+|:----------|:-----------------|:---------------|
+| time      |                  | Search by date |
 
 
 #### Table: `custom_annotations`
@@ -1169,21 +1169,21 @@ Notes:
 
 ##### Columns
 
-| Name                   | Type        | Nullable | Foreign Key To            | Other Properties           |
-|:-----------------------|:------------|:--------:|:--------------------------|:---------------------------|
-| id                     | serial      |   No     |                           | PRIMARY KEY, AUTOINCREMENT |
-| type                   | string(200) |   No     |                           |                            |
-| value                  | bytes       |   Yes    |                           |                            |
-| actor_id               | serial      |   No     | actors.id                 |                            |
-| time                   | timestamp   |   No     |                           |                            |
-| item_id                | serial      |   No     | referenced_objects.id     |                            |
+| Name     | Type        | Nullable | Foreign Key To        | Other Properties           |
+|:---------|:------------|:--------:|:----------------------|:---------------------------|
+| id       | serial      |   No     |                       | PRIMARY KEY, AUTOINCREMENT |
+| type     | string(200) |   No     |                       |                            |
+| value    | bytes       |   Yes    |                       |                            |
+| actor_id | serial      |   No     | actors.id             |                            |
+| time     | timestamp   |   No     |                       |                            |
+| item_id  | serial      |   No     | referenced_objects.id |                            |
 
 ##### Indexes
 
-| Column(s)               | Other Properties | Notes                                       |
-|:------------------------|:-----------------|:--------------------------------------------|
-| type                    |                  | Search by annotation type                   |
-| time                    |                  | Search by date                              |
+| Column(s) | Other Properties | Notes                     |
+|:----------|:-----------------|:--------------------------|
+| type      |                  | Search by annotation type |
+| time      |                  | Search by date            |
 
 
 ### Tables for the Cooperation Layer
