@@ -1189,7 +1189,44 @@ Notes:
 ### Tables for the Cooperation Layer
 
 
-(TODO: add content here)
+#### Table: `advisory_locks`
+
+##### Columns
+
+| Name         | Type        | Nullable | Foreign Key To | Other Properties           |
+|:-------------|:------------|:--------:|:---------------|:---------------------------|
+| id           | serial      |   No     |                | PRIMARY KEY, AUTOINCREMENT |
+| type         | string(200) |   No     |                |                            |
+| session_id   | serial      |   Yes    | sessions.id    |                            |
+| holder_ident | string(200) |   Yes    |                |                            |
+| holder_name  | string(200) |   Yes    |                |                            |
+| time_taken   | timestamp   |   No     |                |                            |
+| heartbeat    | timestamp   |   No     |                |                            |
+
+##### Indexes
+
+No indexes on this table since the number of entries should always be very low (<20).
+
+
+#### Table: `notifications`
+
+##### Columns
+
+| Name         | Type        | Nullable | Other Properties           |
+|:-------------|:------------|:--------:|:---------------------------|
+| id           | serial      |   No     | PRIMARY KEY, AUTOINCREMENT |
+| type         | string(200) |   No     |                            |
+| sender_ident | string(200) |   Yes    |                            |
+| sender_name  | string(200) |   Yes    |                            |
+| message_time | timestamp   |   No     |                            |
+| message_json | text        |   No     |                            |
+
+##### Indexes
+
+| Column(s)    | Other Properties | Notes                                             |
+|:-------------|:-----------------|:--------------------------------------------------|
+| type,id      |                  | Search by type and sequence number                |
+| message_time |                  | Search by time (e.g. to delete old notifications) |
 
 
 Procedures
