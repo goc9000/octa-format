@@ -1588,14 +1588,58 @@ just been added.
 
 ### Procedures for Cooperation
 
-(TODO: add content here)
+#### Acquiring an Advisory Lock
+
+- In a transaction:
+  - Get all entries in the `advisory_locks` table. There should never be too many rows in practice, so loading all data
+    is OK.
+  - Ignore and delete all entries for which the `hearbeat` is too far in the past (e.g. 5-10 minutes)
+  - Check to see whether the lock we are trying to get conflicts with the existing ones, according to the standard (for
+    OCTA standard locks) or vendor-specific locking logic
+    - If there is a conflict, end the transaction and retry in a few seconds
+      - Optional: use an exponential backoff algorithm for the retries, as well as a timeout for the entire operation
+      - Optional: report to the user precisely which program holds an conflicting lock
+    - Otherwise, create a row corresponding to the lock we are taking, filling in the `type` and `session_id` fields
+      appropriately, as well as `time_taken` and `heartbeat`, with the current timestamp 
+      - Remember the `id` of the created row, it will be needed later
+      - Optional but highly recommended: also fill in the `holder_ident` and `holder_name` fields with the
+        identification data for the program
+
+#### Holding an Advisory Lock
+
+- Every few minutes (e.g. 2 or 5):
+  - Update the `heartbeat` field of our lock (found using its `id`) with the current timestamp
+
+#### Releasing an Advisory Lock
+
+- Simply delete the corresponding row in the `advisory_locks` table, found by its `id`.
+
+#### Posting a Notification
+
+- Create a row in the `notifications` table, filling in the `type` and `message_json` fields appropriately, as well as
+  `message_time`, with the current timestamp
+- Optional but highly recommended: also fill in the `sender_ident` and `sender_name` fields with the identification data
+  for the program
+- Optional: you may delete entries in the `notifications` table that are older than a few minutes or so
+
+#### Polling for Notifications
+
+- Get the last `id` in the `notifications` table (unless the table is empty)
+- Repeatedly (every few seconds):
+  - Get all entries in the `notifications` table with a greater `id` than the last one recorded (if the table was empty,
+    just get all entries)
+  - Update the last known `id` as per the obtained entries
+  - Process the entries as notifications accordingly
+      - You can ignore notifications of an unsupported `type`
+      - Notifications with malformed JSON content may be ignored, and optionally a warning may be emitted to the user
 
 
 General Principles for Cooperation
 ----------------------------------
 
 We end by outlining a few principles for safe cooperation between the parties accessing an archive: crawlers, viewers,
-analyzers, etc.
+analyzers, etc. These apply regardless of whether the locking/notifications mechanisms are used, although the latter can
+of course help with enforcement.
 
 - Crawlers should expect session, tag, request etc. internal IDs to be stable while they are operating. A crawler can
   expect there to be no migration or deletion operations that would affect the current session or any objects it uses in
